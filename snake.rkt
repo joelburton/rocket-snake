@@ -305,17 +305,18 @@
     [else (cons (make-posn x y) (new-snake (sub1 x) y (sub1 n)))]))
 
 
-; new-food: placeholder -> posn
-;   Generate a random food pellet
-;   TODO: this doesn't need a param, but BSL requires params
+; new-food: food snake -> posn
+;   Generate a random food pellet, avoiding overlapping with existing food or snake
 (check-random (new-food '() '()) (new-food '() '()))
 (define (new-food food snake)
-  (new-food-check food snake (make-posn (add1 (random (sub1 WIDTH))) (add1 (random (sub1 HEIGHT))))))
+  (new-food-check food
+                  snake
+                  (make-posn (add1 (random (sub1 WIDTH))) (add1 (random (sub1 HEIGHT))))))
 
 
 ; new-food-check: food snake proposed-new-posn
-;   Generative recursion - cooperates with new-food to make sure random food doesn't
-;   fall into existing food or snake lists
+;   Generative recursion - checks if candidate is in existing food or snake,
+;   generates another candidate to attempt
 (define (new-food-check food snake candidate)
   (if (or (member? candidate food) (member? candidate snake))
       (new-food food snake)
