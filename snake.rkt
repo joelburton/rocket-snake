@@ -224,11 +224,11 @@
 ; update-food: ate snake food -> food
 ;   Eat pellet where snake is and add a new pellet
 (check-random (update-food #true (list (make-posn 5 5)) (list (make-posn 5 5) (make-posn 10 10)))
-              (list (new-food "") (make-posn 10 10)))
+              (list (new-food (list (make-posn 5 5)) (list (make-posn 5 5) (make-posn 10 10))) (make-posn 10 10)))
 (check-expect (update-food #false (list (make-posn 5 5)) (list (make-posn 4 4) (make-posn 10 10)))
               (list (make-posn 4 4) (make-posn 10 10)))
 (define (update-food ate snake food)
-  (if ate (cons (new-food "") (remove-all (first snake) food)) food))
+  (if ate (cons (new-food food snake) (remove-all (first snake) food)) food))
 
 
 ; update-game: ate dir snake food score grow -> game
@@ -316,33 +316,54 @@
     [(zero? n) '()]
     [else (cons (make-posn x y) (new-snake (sub1 x) y (sub1 n)))]))
 
-; new-food? placeholder -> posn
+
+; new-food: placeholder -> posn
 ;   Generate a random food pellet
 ;   TODO: this doesn't need a param, but BSL requires params
-(check-random (new-food "") (new-food ""))
-(define (new-food _)
-  (make-posn (add1 (random (sub1 WIDTH))) (add1 (random (sub1 HEIGHT)))))
+(check-random (new-food '() '()) (new-food '() '()))
+(define (new-food food snake)
+  (new-food-check food snake (make-posn (add1 (random (sub1 WIDTH))) (add1 (random (sub1 HEIGHT))))))
+
+
+; new-food-check: food snake proposed-new-posn
+;   Generative recursion - cooperates with new-food to make sure random food doesn't
+;   fall into existing food or snake lists
+(define (new-food-check food snake candidate)
+  (if (or (member? candidate food) (member? candidate snake))
+      (new-food food snake)
+      candidate))
 
 
 ; new-foods: food# -> Foods
 ;   Make # of random new foods
-(check-random (new-foods 3) (list (new-food "") (new-food "") (new-food "")))
-(define (new-foods n)
+(check-random (new-foods 2 '() '()) (list (new-food '() '()) (new-food '() '())))
+(define (new-foods n food snake)
   (cond
     [(zero? n) '()]
-    [else (cons (new-food "") (new-foods (sub1 n)))]))
+    [else (cons (new-food food snake) (new-foods (sub1 n) food snake))]))
+
+
+; new-game-from-snake: snake food# -> game
+;    make a new game from a snake
+;    this has to be split from new-game since that needs to make the snake
+;    which is used here twice; once for the snake and once to exclude the snake
+;    from the random food.
+(check-expect (new-game-from-snake (list (make-posn 5 5)) 0)
+              (make-game "right" (list (make-posn 5 5)) '() 0 GROW))
+(define (new-game-from-snake snake food#)
+  (make-game
+   "right"
+   snake
+   (new-foods food# snake '())
+   0
+   GROW))
 
 
 ; new-game: #food #snake -> game
 (check-expect (new-game 0 1)
               (make-game "right" (list (make-posn 15 15)) '() 0 GROW))
 (define (new-game food# snake#)
-  (make-game
-   "right"
-   (new-snake (quotient WIDTH 2) (quotient HEIGHT 2) snake#)
-   (new-foods food#)
-   0
-   GROW))
+  (new-game-from-snake (new-snake (quotient WIDTH 2) (quotient HEIGHT 2) snake#) food#))
 
 
 ;; Main functions
@@ -359,4 +380,4 @@
     [stop-when end? show-crash]))
 
 
-(snake .1)
+;(snake .1)
