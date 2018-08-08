@@ -19,10 +19,9 @@
 ;   dir = "up|down|left|right"
 ;   snake = (list (make-posn x y) (make-posn x y) ...)   [head is start]
 ;   food = (list (make-posn x y) (make-posn x y) ...)
-;   score = number
 ;   grow = # of ticks where snake should grow (goes down each tick, up each pellet eaten)
 
-(define-struct game [dir snake food score grow])
+(define-struct game [dir snake food grow])
 
 
 ;; Rendering Functions
@@ -64,7 +63,7 @@
 
 ; render: Game -> Image
 ;    Render all: food and snake on top of SCENE
-(check-expect (render (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
+(check-expect (render (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
               (render-food (list (make-posn 4 4)) (render-snake (list (make-posn 5 5)) SCENE)))
 (define (render game)
   (render-food (game-food game) (render-snake (game-snake game) SCENE)))
@@ -97,23 +96,22 @@
 ; keyhander: Game Key -> Posn
 ;    Handle keys:
 ;      up/down/left/right: change direction
-(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0) "left")
-              (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
-(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0) "right")
-              (make-game "right" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
-(check-expect (keyhandler (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0) "up")
-              (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
-(check-expect (keyhandler (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0) "down")
-              (make-game "down" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
-(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0) " ")
-              (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 100 0))
+(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0) "left")
+              (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
+(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0) "right")
+              (make-game "right" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
+(check-expect (keyhandler (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 0) "up")
+              (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
+(check-expect (keyhandler (make-game "left" (list (make-posn 5 5)) (list (make-posn 4 4)) 0) "down")
+              (make-game "down" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
+(check-expect (keyhandler (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0) " ")
+              (make-game "up" (list (make-posn 5 5)) (list (make-posn 4 4)) 0))
 (define (keyhandler game key)
   (cond
     [(or (key=? key "up") (key=? key "down") (key=? key "left") (key=? key "right"))
      (make-game (new-direction key (game-dir game))
                 (game-snake game)
                 (game-food game)
-                (game-score game)
                 (game-grow game))]
     [else game]))
 
@@ -204,14 +202,6 @@
 ;; Game Update functions -- called on every tick and handle parts of state
 
 
-; update-score: ate score -> score
-;    If ate, increase score
-(check-expect (update-score #true 5) 6)
-(check-expect (update-score #false 5) 5)
-(define (update-score ate score)
-  (if ate (add1 score) score))
-
-
 ; update-grow: ate grow -> grow
 ;    Always decreate grow, and, if ate, increase by GROW. Don't go below 0.
 (check-expect (update-grow #false 2) 1)
@@ -232,27 +222,25 @@
 
 
 ; update-game: ate dir snake food score grow -> game
-;   move snake (growing if grow), eat food & replace, update score, update grow
-(check-expect (update-game #false "up" (list (make-posn 5 5)) '() 100 0)
-              (make-game "up" (list (make-posn 5 4)) '() 100 0)) 
-(define (update-game ate dir snake food score grow)
+;   move snake (growing if grow), eat food & replace, update grow
+(check-expect (update-game #false "up" (list (make-posn 5 5)) '() 0)
+              (make-game "up" (list (make-posn 5 4)) '() 0)) 
+(define (update-game ate dir snake food grow)
   (make-game
    dir
    (move-snake snake dir grow)
    (update-food ate snake food)
-   (update-score ate score)
    (update-grow ate grow)))
 
 
 ; tock: Game -> Game
-(check-expect (tock (make-game "up" (list (make-posn 5 5)) '() 100 0))
-                    (update-game #false "up" (list (make-posn 5 5)) '() 100 0))
+(check-expect (tock (make-game "up" (list (make-posn 5 5)) '() 0))
+                    (update-game #false "up" (list (make-posn 5 5)) '() 0))
 (define (tock game)
   (update-game (is-eating? (game-snake game) (game-food game))
                (game-dir game)
                (game-snake game)
                (game-food game)
-               (game-score game)
                (game-grow game)))
 
 
@@ -283,9 +271,9 @@
 
 ; end?: Game -> Boolean
 ;   End game on crash into wall or snake head crashes into body of snake
-(check-expect (end? (make-game "up" (list (make-posn 5 5)) '() 100 0)) #false)
-(check-expect (end? (make-game "up" (list (make-posn 0 0)) '() 100 0)) #true)
-(check-expect (end? (make-game "up" (list (make-posn 5 5) (make-posn 5 5)) '() 100 0)) #true)
+(check-expect (end? (make-game "up" (list (make-posn 5 5)) '() 0)) #false)
+(check-expect (end? (make-game "up" (list (make-posn 0 0)) '() 0)) #true)
+(check-expect (end? (make-game "up" (list (make-posn 5 5) (make-posn 5 5)) '() 0)) #true)
 (define (end? game)
   (or (wall-crash? (first (game-snake game)))
       (snake-crash? (game-snake game))))
@@ -293,14 +281,14 @@
 
 ; show-crash: Game -> Image
 ;   Show game-end crash message
-(define sample-game (make-game "up" '() '() 100 0))
+(define sample-game (make-game "up" '() '() 0))
 (check-expect (show-crash sample-game)
-              (place-image/align (text "Score: 100" (* 1.5 SCALE) "black")
+              (place-image/align (text "Score: 0" (* 1.5 SCALE) "black")
                                  SCALE (- (* HEIGHT SCALE) SCALE) "left" "bottom"
                                  (render sample-game)))
 (define (show-crash game)
   (place-image/align
-   (text (string-append "Score: " (number->string (game-score game))) (* 1.5 SCALE) "black")
+   (text (string-append "Score: " (number->string (length (game-snake game)))) (* 1.5 SCALE) "black")
    SCALE (- (* HEIGHT SCALE) SCALE) "left" "bottom" (render game)))
 
 
@@ -349,19 +337,18 @@
 ;    which is used here twice; once for the snake and once to exclude the snake
 ;    from the random food.
 (check-expect (new-game-from-snake (list (make-posn 5 5)) 0)
-              (make-game "right" (list (make-posn 5 5)) '() 0 GROW))
+              (make-game "right" (list (make-posn 5 5)) '() GROW))
 (define (new-game-from-snake snake food#)
   (make-game
    "right"
    snake
    (new-foods food# snake '())
-   0
    GROW))
 
 
 ; new-game: #food #snake -> game
 (check-expect (new-game 0 1)
-              (make-game "right" (list (make-posn 15 15)) '() 0 GROW))
+              (make-game "right" (list (make-posn 15 15)) '() GROW))
 (define (new-game food# snake#)
   (new-game-from-snake (new-snake (quotient WIDTH 2) (quotient HEIGHT 2) snake#) food#))
 
